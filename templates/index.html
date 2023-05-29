@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.0/codemirror.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.0/codemirror.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inconsolata|Roboto:300,400,500|Work+Sans:400,700">
+  <link rel="stylesheet" href="static/style.css">
+  <title>Natural Language Query</title>
+</head>
+<body>
+  <nav class="navbar navbar-default navbar-static-top">
+    <div class="container noselect">
+      <div class="navbar-header">
+        <a class="navbar-brand" href="/">
+          <img style="max-width: 50px; margin-top: -15px;" class="logo" src="static/logo.png"/>
+        </a>
+      </div>
+      <div class="collapse navbar-collapse" id="navbar-collapse-section">
+        <ul class="nav navbar-nav navbar-right">
+          <li><a href="https://github.com/laurieluo/nql-to-sql-with-gpt/issues">Feedback</a></li>
+          <li><a href="https://github.com/laurieluo/nql-to-sql-with-gpt">Source Code</a></li>
+        </ul>
+      </div>      
+    </div>
+  </nav> 
+  <main id="content" class="container">
+
+<header>
+    <h1>Natural Language Query</h1>
+    
+    <div>
+        <h3>Select Model</h3>
+        <input type="radio" id="gpt-3.5-turbo" name="model" value="gpt-3.5-turbo" checked>
+        <label for="gpt-3.5-turbo">gpt-3.5-turbo</label>
+        <input type="radio" id="gpt-4" name="model" value="gpt-4">
+        <label for="gpt-4">gpt-4</label>
+        <input type="radio" id="gpt-4-32k-0314" name="model" value="gpt-4-32k-0314" disabled>
+        <label for="gpt-4-32k-0314">gpt-4-32k-0314 (Not avaliable now)</label>
+    </div>
+    <div>
+        <h3>Enter Natural Language Query</h3>
+        <textarea id="text_input" rows="4" cols="50"></textarea>
+        <br>
+        <button onclick="executeTextQuery()">NQL Query</button>
+        <button onclick="executeTextToSQL()">NQL to SQL</button>
+        <button onclick="clearAllInputs()">Clear All Inputs</button>
+    </div>
+    <div>
+        <h3>Modify SQL Code</h3>
+        <textarea id="code_input" rows="4" cols="50"></textarea>
+        <br>
+        <button onclick="executeSQL()">SQL Query</button>
+    </div>
+    <div>
+        <h3>Query Results</h3>
+        <div id="result_display"></div>
+    </div>
+
+</header>
+
+<script>
+    var codeEditor = CodeMirror.fromTextArea(document.getElementById("code_input"), {
+        lineNumbers: true,
+        mode: "text/x-sql",
+        theme: "dracula"
+    });
+
+    function clearAllInputs() {
+            document.getElementById("text_input").value = "";
+            codeEditor.setValue("");
+            document.getElementById("result_display").textContent = "";
+    }
+
+    function executeTextQuery() {
+        var textInput = document.getElementById("text_input").value;
+        var selectedModel = document.querySelector('input[name="model"]:checked').value;
+
+        fetch('/execute_text', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: textInput,
+                model: selectedModel
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            var tableHtml = data.table
+            document.getElementById("result_display").innerHTML = tableHtml;
+        });
+    }
+
+    function executeTextToSQL() {
+        var textInput = document.getElementById("text_input").value;
+        var selectedModel = document.querySelector('input[name="model"]:checked').value;
+
+        fetch('/text_to_sql', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: textInput,
+                model: selectedModel
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            codeEditor.setValue(data.result);
+        });
+    }
+
+    function executeSQL() {
+        var codeInput = codeEditor.getValue();
+
+        fetch('/execute_code', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                query: codeInput
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            var tableHtml = data.table;
+            document.getElementById("result_display").innerHTML = tableHtml;
+        });
+    }
+
+</script>
+
+</body>
+</html>
